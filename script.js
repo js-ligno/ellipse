@@ -330,9 +330,17 @@ function onMouseDown(e) {
       ellipseData.activeHandle = dragHandle;
 
       // Determine the anchor cross location
-      if (editMode === 'rotate') {
+      if (editMode === 'rotate' && hitHandle) {
         // For rotation, anchor is the ellipse center
         activeAnchor = { x: ellipseData.centerX, y: ellipseData.centerY};
+        isDragging = true;
+        dragHandle = hitHandle;
+        // Store the angle from center to the mouse position at the start
+        ellipseData.dragStartAngle = Math.atan2(
+          my - ellipseData.centerY,
+          mx - ellipseData.centerX
+        );
+        ellipseData.dragStartRotation = ellipseData.rotation;
       } else {
         // editMode = 'resize-shear'
         if (dragHandle.role.includes('middle')) {
@@ -397,11 +405,17 @@ function onMouseMove(e) {
     if (editMode === 'resize-shear') {
       if (dragHandle.role.includes('middle')) {
         // Shear
-        if (dragHandle.role === 'top-middle' || dragHandle.role === 'bottom-middle') {
+        if (dragHandle.role === 'bottom-middle') {
           // Shear in X direction
           ellipseData.shearX += dx * 0.01;
+        } else if (dragHandle.role === 'top-middle') {
+          // Shear in X direction
+          ellipseData.shearX -= dx * 0.01;
+        } else if (dragHandle.role === 'left-middle') {
+          // Shear in X direction
+          ellipseData.shearY -= dy * 0.01;
         } else {
-          // left-middle or right-middle => shear in Y direction
+          // right-middle => shear in Y direction
           ellipseData.shearY += dy * 0.01;
         }
       } else {
@@ -447,10 +461,21 @@ function onMouseMove(e) {
         //   deltaY > 0 ? ellipseData.centerX - deltaY : ellipseData.centerX + deltaY; 
       }
 
-    } else if (editMode === 'rotate') {
-      // Rotate around ellipse center
-      const rotationSpeed = 0.01;
-      ellipseData.rotation += dx * rotationSpeed;
+    } else if (isDragging && editMode === 'rotate' && dragHandle) {
+      // 1) Compute the *current* angle from center to mouse
+      const angleNow = Math.atan2(
+        my - ellipseData.centerY,
+        mx - ellipseData.centerX
+      );
+
+      // 2) The delta from initial angle to now
+      const angleDelta = angleNow - ellipseData.dragStartAngle;
+
+      // 3) Update ellipse rotation
+      ellipseData.rotation = ellipseData.dragStartRotation + angleDelta;
+
+      // Optionally clamp or mod 2π, e.g.:
+      // ellipseData.rotation = (ellipseData.rotation + 2*Math.PI) % (2*Math.PI);
     }
     
 
